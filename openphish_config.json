@@ -1,0 +1,16 @@
+{
+    "attachments_path": "/home/analyst/malware/",
+    "linux_cmd": [
+        "xdg-open"
+    ],
+    "sharedurls": "/home/analyst/malware/.sharedurls",
+    "url_cmd": [
+        "firefox-esr",
+        "--new-tab"
+    ],
+    "windows_cmd": [
+        "C:\\windows\\system32\\cmd.exe",
+        "/c",
+        "start"
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    "attachments_path": "E:\\malware\\",
+    "default_url": "https://duckduckgo.com",
+    "linux_cmd": [
+        "xdg-open"
+    ],
+    "sharedurls": "E:\\.sharedurls",
+    "url_cmd": [
+        "C:\\Program Files\\internet explorer\\iexplore.exe"
+    ],
+    "windows_cmd": [
+        "explorer.exe"
+    ]
+}

@@ -8,6 +8,7 @@ import time
 import hashlib
 import subprocess
 import json
+import base64
 from threading import Timer, Lock
 import _thread as thread
 
@@ -15,16 +16,23 @@ class Config():
     def __init__(self, configuration=None):
         if not None is configuration:
             self.config = configuration
+            self.config['platform'] = platform.system()
         else:
             self.config = {
                 "linux_cmd": ["xdg-open"],
                 "windows_cmd": ["C:\\windows\\system32\\cmd.exe", "/c", "start"],
                 "url_cmd": ["firefox-esr", "--new-tab"],
-                "default_url": "https://duckduckgo.com",
                 "sharedurls": "/home/analyst/malware/.sharedurls",
-                "attachments_path": "/home/analyst/malware/",
-                "UA": "Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko",
+                "attachments_path": "/home/analyst/malware/"
             }
+            self.loadconfig()
+            self.config['platform'] = platform.system()
+        try:
+            f=open("processed.log","r+")
+            f.close()
+        except:    
+            f=open("processed.log","w+")
+            f.close()
 
     def __getitem__(self, key):
         if key in self.config:
@@ -34,13 +42,12 @@ class Config():
 
     def loadconfig(self):
         try:
-            with open("openlinks_config.json") as f:
+            with open("openphish_config.json") as f:
                 self.config = json.loads(f.read())
-            print("Opened openlinks_config.json")
         except Exception as e:
             print(str(e))
         try:
-            with open("openlinks_config.json", "w+") as f:
+            with open("openphish_config.json", "w+") as f:
                 f.write(json.dumps(self.config, indent=4, sort_keys=True))
         except Exception as e:
             print(str(e))
@@ -153,6 +160,7 @@ class URLMonitor(OpenPhish):
                 time.sleep(0.7)
                 with open(self.sharedurls, "r+") as f:
                     lines = f.read()
+                    sys.stdout.flush()
                     url = ''
                     for url in lines.splitlines():
                         if url.strip().startswith("http") and not url in self.opened:
@@ -160,16 +168,21 @@ class URLMonitor(OpenPhish):
                             url = url.strip("\n").strip()
                             self.opened.add(url)
                             print("Opened: {}".format(url))
-                            subprocess.call(
-                                self.config['url_cmd']+[url], shell=False)
-                            with open(self.sharedurls, "w+") as f:
-                                f.write("")
+                            if self.config['platform'] == "Windows":
+                                #posh="""powershell.exe -c {Start-Process '"""+' '.join(self.config["url_cmd"]).strip()+"""' -argumentlist '"""+url.replace('&','""&""')+"""'}"""
+                                #print(posh)
+                                #subprocess.call(['powershell.exe','-c',posh],shell=False)
+                                subprocess.call(["wmic","process", "call", "create", ' '.join(self.config["url_cmd"]).strip()+" "+url],shell=False)
+
+                            else:
+                                subprocess.call(
+                                    self.config['url_cmd']+[url], shell=False)
                         elif url and url in self.opened:
                             print('Already processed ' +
                                   url+' --- Not opening it again.')
 
-                            with open(self.sharedurls, "w+") as f:
-                                f.write("")
+                with open(self.sharedurls, "w+") as f:
+                    f.write("")
         except Exception as e:
             traceback.print_exc()
 
@@ -178,16 +191,16 @@ class FileMonitor(OpenPhish):
     def __init__(self, config):
         super(FileMonitor, self).__init__(config)
         self.prefix = config["attachments_path"]
-        self.config['platform'] = platform.system()
+      
 
     def openfile(self, fn):
-        if os.fork() == 0:
-            if self.config['platform'] == "Linux":
+        if self.config['platform'] == "Linux":
+            if os.fork() == 0:
                 subprocess.call(self.config['linux_cmd']+[fn])
                 os._exit(0)
-            elif self.config['platform'] == "Windows":
-                subprocess.call(self.config['windows_cmd']+[fn])
-                os._exit(0)
+        elif self.config['platform'] == "Windows":
+           os.system(' '.join(self.config['windows_cmd']+[fn]).strip())
+        
 
     def sha256hash(self, filename):
         data = ''
@@ -217,13 +230,14 @@ class FileMonitor(OpenPhish):
 
                 for file in files:
                     # print(file)
-                    time.sleep(1/100.0)
+                    time.sleep(0.1)
                     pf = prefix+file
                     if file.startswith(".") or (not "." in file):
                         continue
                     else:
+                        time.sleep(0.3)
                         sha256 = self.sha256hash(pf)
-                    if not sha256 in processed:
+                    if sha256 and not sha256 in processed:
                         # time.sleep(2)
                         print("+"+("*"*80)+"+")
                         print("Processing:"+pf)
@@ -233,7 +247,7 @@ class FileMonitor(OpenPhish):
                         print(vturl)
                         processed.add(sha256)
                         with open("processed.log", "a+") as f:
-                            f.write(sha256+"\n")
+                            f.write(str(sha256)+"\n")
                         self.openfile(pf)
             except Exception as e:
                 print(e)
@@ -245,8 +259,8 @@ class FileMonitor(OpenPhish):
 if __name__ == "__main__":
     config = Config()
     config.loadconfig()
-    iocmon = OpenPhish(config)
+    openphish = OpenPhish(config)
     try:
-        iocmon.main()
+        openphish.main()
     except Exception as e:
         traceback.print_exc()
