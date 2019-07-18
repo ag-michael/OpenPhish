@@ -1,6 +1,5 @@
 {
     "attachments_path": "E:\\malware\\",
-    "default_url": "https://duckduckgo.com",
     "linux_cmd": [
         "xdg-open"
     ],
